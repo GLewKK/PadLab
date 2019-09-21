@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
@@ -11,6 +12,10 @@ namespace TCPClient
     public class Program
     {
         public static string name = string.Empty;
+        static ConsoleEventDelegate handler;
+        static TcpClient client;
+        static Thread thread;
+        static NetworkStream ns;
 
         static void Main(string[] args)
         {
@@ -18,7 +23,7 @@ namespace TCPClient
 
             IPAddress ip = IPAddress.Parse("127.0.0.1");
             int port = 5000;
-            TcpClient client = new TcpClient();
+            client = new TcpClient();
 
             IPEndPoint epUDP = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 100);
 
@@ -50,7 +55,6 @@ namespace TCPClient
                 stream1.Position = 0;
 
                 var result1 = binaryFormatter1.Deserialize(stream1) as dynamic;
-
                 if (result1 is bool)
                 {
                     if (result1)
@@ -73,10 +77,13 @@ namespace TCPClient
             client.Connect(ip, port);
 
             Console.WriteLine($"{name} connected!!");
-            NetworkStream ns = client.GetStream();
-            Thread thread = new Thread(o => ReceiveData((TcpClient)o));
+            ns = client.GetStream();
+            thread = new Thread(o => ReceiveData((TcpClient)o));
 
             thread.Start(client);
+
+            handler = new ConsoleEventDelegate(ConsoleEventCallback);
+            SetConsoleCtrlHandler(handler, true);
 
             string s;
             while (!string.IsNullOrEmpty((s = Console.ReadLine())))
@@ -84,13 +91,6 @@ namespace TCPClient
                 byte[] buffer = Encoding.ASCII.GetBytes($"{name}: {s}");
                 ns.Write(buffer, 0, buffer.Length);
             }
-
-            client.Client.Shutdown(SocketShutdown.Send);
-            thread.Join();
-            ns.Close();
-            client.Close();
-            Console.WriteLine("disconnect from server!!");
-            Console.ReadKey();
         }
         static void ReceiveData(TcpClient client)
         {
@@ -108,5 +108,22 @@ namespace TCPClient
                 }
             }
         }
+
+        static bool ConsoleEventCallback(int eventType)
+        {
+            if (eventType == 2)
+            {
+                client.Client.Shutdown(SocketShutdown.Send);
+                thread.Join();
+                ns.Close();
+                client.Close();
+            }
+            return false;
+        }
+
+
+        private delegate bool ConsoleEventDelegate(int eventType);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
     }
 }
