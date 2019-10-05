@@ -1,12 +1,14 @@
-﻿using MessageChannel.Abstractions;
+﻿using System.Net.Sockets;
+using MessageChannel.Abstractions;
 
 namespace MessageChannel.Implementations
 {
     public class ApplicationSender : IApplicationSender
     {
-        public void Send(byte[] byteText)
+        private readonly IMessageBroker _messageBroker = new MessageBroker();
+        public void Send(string text)
         {
-            throw new System.NotImplementedException();
+
         }
     }
 }

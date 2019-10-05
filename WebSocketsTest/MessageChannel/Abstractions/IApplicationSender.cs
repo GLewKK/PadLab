@@ -2,6 +2,6 @@
 {
     public interface IApplicationSender
     {
-        void Send(byte[] byteText);
+        void Send(string text);
     }
 }

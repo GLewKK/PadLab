@@ -1,11 +1,7 @@
 ﻿using System;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Threading;
+using MessageChannel.Abstractions;
+using MessageChannel.Implementations;
 
 namespace TCPClient
 {
@@ -13,99 +9,55 @@ namespace TCPClient
     {
         public static string name = string.Empty;
         static ConsoleEventDelegate handler;
-        static TcpClient client;
-        static Thread thread;
-        static NetworkStream ns;
+
+        private static readonly IClientManager iManager = new ClientManager();
 
         static void Main(string[] args)
         {
-            var udpClient = new UdpClient();
+            IAppUserConfigurator userConfigurator = new AppUserConfigurator();
 
-            IPAddress ip = IPAddress.Parse("127.0.0.1");
-            int port = 5000;
-            client = new TcpClient();
-
-            IPEndPoint epUDP = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 100);
-
-
-            //connect to udpServer
-            udpClient.Connect(epUDP);
-
-            var receivedData = new byte[1024 * 4];
+            userConfigurator.ConnectToServer();
 
             while (true)
             {
                 Console.WriteLine("Select a username:");
                 name = Console.ReadLine();
 
-                var binFormatter = new BinaryFormatter();
-                var mStream = new MemoryStream();
+                var result = userConfigurator.RegisterUser(name);
 
-                binFormatter.Serialize(mStream, name);
-                var sending = mStream.ToArray();
-
-                udpClient.Send(sending, sending.Length);
-
-                receivedData = udpClient.Receive(ref epUDP);
-
-                var stream1 = new MemoryStream();
-                var binaryFormatter1 = new BinaryFormatter();
-
-                stream1.Write(receivedData, 0, receivedData.Length);
-                stream1.Position = 0;
-
-                var result1 = binaryFormatter1.Deserialize(stream1) as dynamic;
-                if (result1 is bool)
+                if (result == bool.TrueString)
                 {
-                    if (result1)
-                    {
-                        Console.WriteLine("Successfully added.");
-                        break;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Error! Name already exists.");
-                        continue;
-                    }
+                    Console.WriteLine("Connected.");
+                    break;
                 }
+                if(result == bool.FalseString)
+                {
+
+                }
+                else
+                {
+                    Console.WriteLine(result);
+                    break;
+                }
+
+                Console.WriteLine("Error! Name already exists.");
             }
-            
 
-
-
-
-            client.Connect(ip, port);
+            iManager.SetName(name);
+            iManager.ConnectToServer();
+            iManager.SetNetworkStream();
+            iManager.SetThread();
 
             Console.WriteLine($"{name} connected!!");
-            ns = client.GetStream();
-            thread = new Thread(o => ReceiveData((TcpClient)o));
 
-            thread.Start(client);
-
-            handler = new ConsoleEventDelegate(ConsoleEventCallback);
+            handler = ConsoleEventCallback;
             SetConsoleCtrlHandler(handler, true);
 
             string s;
-            while (!string.IsNullOrEmpty((s = Console.ReadLine())))
+            string exitCode = "--exit";
+            while (exitCode != ( s = Console.ReadLine()))
             {
-                byte[] buffer = Encoding.ASCII.GetBytes($"{name}: {s}");
-                ns.Write(buffer, 0, buffer.Length);
-            }
-        }
-        static void ReceiveData(TcpClient client)
-        {
-            NetworkStream ns = client.GetStream();
-            
-            byte[] receivedBytes = new byte[1024];
-            int byte_count;
-
-            while ((byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length)) > 0)
-            {
-                var message = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
-                if (!message.Contains(name))
-                {
-                    Console.WriteLine(message);
-                }
+                iManager.SendMessage($"{name}: {s}");
             }
         }
 
@@ -113,10 +65,7 @@ namespace TCPClient
         {
             if (eventType == 2)
             {
-                client.Client.Shutdown(SocketShutdown.Send);
-                thread.Join();
-                ns.Close();
-                client.Close();
+                iManager.DisconnectFromServer();
             }
             return false;
         }

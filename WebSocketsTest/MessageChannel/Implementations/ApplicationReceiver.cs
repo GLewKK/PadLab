@@ -4,9 +4,9 @@ namespace MessageChannel.Implementations
 {
     public class ApplicationReceiver : IApplicationReceiver
     {
-        public void Send(string text)
+        public bool Receive()
         {
-            throw new System.NotImplementedException();
+            return default;
         }
     }
 }

@@ -1,7 +1,9 @@
-﻿namespace MessageChannel.Abstractions
+﻿using System.Net;
+
+namespace MessageChannel.Abstractions
 {
     public interface IApplicationReceiver
     {
-        void Send(string text);
+        bool Receive();
     }
 }

@@ -20,8 +20,8 @@ namespace MergedServer
 
         static void Main(string[] args)
         {
-            Thread udpServer = new Thread(new ThreadStart(UdpServer));
-            Thread tcpServer = new Thread(new ThreadStart(TcpServer));
+            Thread udpServer = new Thread(UdpServer);
+            Thread tcpServer = new Thread(TcpServer);
 
             udpServer.Start();
             tcpServer.Start();
@@ -43,7 +43,7 @@ namespace MergedServer
                 EndPoint tmpRemote = (EndPoint)sender;
 
                 recv = newSocket.ReceiveFrom(data, ref tmpRemote);
-                Console.WriteLine($"Message received from {tmpRemote.ToString()}");
+                Console.WriteLine($"Message received from {tmpRemote}");
 
 
                 var mStream = new MemoryStream();
@@ -64,8 +64,6 @@ namespace MergedServer
 
                 }
                 newSocket.Close();
-                continue;
-
             }
         }
         public static void TcpServer()
@@ -94,7 +92,6 @@ namespace MergedServer
             TcpClient client;
 
             lock (_lock) client = Users.FirstOrDefault(x => x.Id == id).Client;
-
             while (true)
             {
 
@@ -109,29 +106,56 @@ namespace MergedServer
 
                 string data = Encoding.ASCII.GetString(buffer, 0, byte_count);
                 Broadcast(data);
-                Console.WriteLine(data);
+                //Console.WriteLine(data);
             }
 
-            var user = Users.FirstOrDefault(x => x.Id == id);
-
-            lock (_lock) Users.Remove(user);
-            client.Client.Shutdown(SocketShutdown.Both);
-            client.Close();
+            //client.Client.Shutdown(SocketShutdown.Both);
+            //client.Close();
         }
 
         public static void Broadcast(string data)
         {
+            var isCommand = InterpretateCommand(data);
+            if (isCommand) return;
+
             byte[] buffer = Encoding.ASCII.GetBytes(data + Environment.NewLine);
 
             lock (_lock)
             {
-                foreach (TcpClient c in Users.Select(x => x.Client))
+                foreach (var user in Users)
                 {
-                    NetworkStream stream = c.GetStream();
-
-                    stream.Write(buffer, 0, buffer.Length);
+                    if (user.IsActive)
+                    {
+                        NetworkStream stream = user.Client.GetStream();
+                        stream.Write(buffer, 0, buffer.Length);
+                    }
+                    else
+                    {
+                        user.LostMessages.Add(new LostMessage
+                        {
+                            Message = data,
+                            ReceivedDate = DateTime.Now
+                        });
+                    }
                 }
             }
+        }
+
+        public static bool InterpretateCommand(string command)
+        {
+            if (command.StartsWith("--set "))
+            {
+                var result = command.Replace("--set ", string.Empty);
+                var list = result.Split(':');
+                if (list.First().Equals("ClientNotActive"))
+                {
+                    Users.FirstOrDefault(x => x.Name.Equals(list.Last())).IsActive = false;
+                    return true;
+                }
+
+            }
+
+            return false;
         }
     }
 }
