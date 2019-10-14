@@ -59,22 +59,16 @@ namespace MessageChannel.Implementations
             while ((byte_count = ns1.Read(receivedBytes, 0, receivedBytes.Length)) > 0)
             {
                 var message = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
-                if (!message.Contains(_username))
-                {
-                    Console.WriteLine(message);
-                }
+                Console.WriteLine(message);
             }
         }
 
         public void DisconnectFromServer()
         {
-            SendMessage($"--set ClientNotActive::{_username}");
+            SendMessage($"{_username}:--DisconnectUser");
 
             _client.Client.Shutdown(SocketShutdown.Send);
             _thread.Join();
-
-            //_networkStream.Close();
-            //_client.Close();
         }
 
     }

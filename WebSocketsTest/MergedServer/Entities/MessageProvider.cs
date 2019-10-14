@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net.Sockets;
 
-namespace MergedServer
+namespace MergedServer.Entities
 {
     public class MessageProvider
     {
@@ -11,11 +10,7 @@ namespace MergedServer
         public TcpClient Client { get; set; }
         public bool IsActive { get; set; } = true;
         public List<LostMessage> LostMessages { get; set; } = new List<LostMessage>();
-    }
-
-    public class LostMessage
-    {
-        public string Message { get; set; }
-        public DateTime ReceivedDate { get; set; }
+        public string Channel { get; set; }
+        public List<MessageProvider> Subscribers { get; set; }
     }
 }

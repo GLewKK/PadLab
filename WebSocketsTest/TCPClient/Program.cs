@@ -30,17 +30,15 @@ namespace TCPClient
                     Console.WriteLine("Connected.");
                     break;
                 }
-                if(result == bool.FalseString)
+                if (result == bool.FalseString)
                 {
-
+                    Console.WriteLine("This user is already in chat!");
                 }
                 else
                 {
                     Console.WriteLine(result);
                     break;
                 }
-
-                Console.WriteLine("Error! Name already exists.");
             }
 
             iManager.SetName(name);
@@ -48,16 +46,15 @@ namespace TCPClient
             iManager.SetNetworkStream();
             iManager.SetThread();
 
-            Console.WriteLine($"{name} connected!!");
-
             handler = ConsoleEventCallback;
             SetConsoleCtrlHandler(handler, true);
 
             string s;
             string exitCode = "--exit";
-            while (exitCode != ( s = Console.ReadLine()))
+            while (exitCode != (s = Console.ReadLine()))
             {
-                iManager.SendMessage($"{name}: {s}");
+                if (!string.IsNullOrEmpty(s))
+                    iManager.SendMessage($"{name}: {s}");
             }
         }
 

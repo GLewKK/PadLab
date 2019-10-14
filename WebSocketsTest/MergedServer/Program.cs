@@ -7,6 +7,8 @@ using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
+using MergedServer.Entities;
+using MergedServer.Extensions;
 
 namespace MergedServer
 {
@@ -77,8 +79,6 @@ namespace MergedServer
                 var user = Users.FirstOrDefault(x => x.Id == Count);
                 lock (_lock) user.Client = client;
 
-                Console.WriteLine($"{user.Name} connected!!");
-
                 Thread t = new Thread(Handle_clients);
                 t.Start(Count);
                 Count++;
@@ -108,54 +108,98 @@ namespace MergedServer
                 Broadcast(data);
                 //Console.WriteLine(data);
             }
-
-            //client.Client.Shutdown(SocketShutdown.Both);
-            //client.Close();
         }
 
         public static void Broadcast(string data)
         {
-            var isCommand = InterpretateCommand(data);
-            if (isCommand) return;
+            var index = data.IndexOf(':');
 
-            byte[] buffer = Encoding.ASCII.GetBytes(data + Environment.NewLine);
+            var userName = data.Substring(0, index);
+            var userSource = Users.FirstOrDefault(x => x.Name.Equals(userName));
 
-            lock (_lock)
+            var command = data.Substring(index, data.Length - index).TrimStart(':', ' ');
+            var messageTargets = new List<MessageTarget>();
+
+            var isNotificationCommand = false;
+            if (command.Contains("--"))
             {
-                foreach (var user in Users)
+                isNotificationCommand = true;
+
+                var spaceIndex = command.IndexOf(' ', 0);
+                var commandName = string.Empty;
+                var commandValue = string.Empty;
+                if (spaceIndex >= 0)
                 {
-                    if (user.IsActive)
+                    commandName = command.Substring(0, spaceIndex).Replace("--", string.Empty);
+
+                    commandValue = command.Substring(spaceIndex, command.Length - spaceIndex).TrimStart(' ');
+                }
+                else
+                {
+                    commandName = command.Replace("--", string.Empty);
+                }
+
+                switch (commandName.ToLower())
+                {
+                    case UserCommand.CreateChannel:
+                        messageTargets = userSource.CreateChannel(commandValue);
+                        break;
+                    case UserCommand.Publish:
+                        messageTargets = userSource.Publish(commandValue);
+                        isNotificationCommand = false;
+                        break;
+                    case UserCommand.PublishShortCommand:
+                        messageTargets = userSource.Publish(commandValue);
+                        isNotificationCommand = false;
+                        break;
+                    case UserCommand.Disconnect:
+                        messageTargets = userSource.Disconnect();
+                        break;
+                    case UserCommand.Subscribe:
+                        messageTargets = userSource.Subscribe(commandValue);
+                        break;
+                    case UserCommand.SubscribeShortCommand:
+                        messageTargets = userSource.Subscribe(commandValue);
+                        break;
+                    case UserCommand.NotifyConnect:
+                        messageTargets = userSource.NotifyConnect();
+                        break;
+                    case UserCommand.NotifyReconnect:
+                        messageTargets = userSource.NotifyReconnect();
+                        break;
+                    case UserCommand.UnSubscribe:
+                        messageTargets = userSource.Unsubscribe(commandValue);
+                        break;
+                    case UserCommand.UnSubscribeShortCommand:
+                        messageTargets = userSource.Unsubscribe(commandValue);
+                        break;
+                    default:
+                        messageTargets = userSource.NotFound();
+                        break;
+                }
+            }
+            else
+            {
+                messageTargets = userSource.SendMessage(data);
+            }
+
+            foreach (var target in messageTargets)
+            {
+                byte[] buffer = Encoding.ASCII.GetBytes(target.Message + Environment.NewLine);
+
+                foreach (var user in target.Targets)
+                {
+                    if (user.IsActive || isNotificationCommand)
                     {
                         NetworkStream stream = user.Client.GetStream();
                         stream.Write(buffer, 0, buffer.Length);
                     }
                     else
                     {
-                        user.LostMessages.Add(new LostMessage
-                        {
-                            Message = data,
-                            ReceivedDate = DateTime.Now
-                        });
+                        user.AddLostMessage(target.Message);
                     }
                 }
             }
-        }
-
-        public static bool InterpretateCommand(string command)
-        {
-            if (command.StartsWith("--set "))
-            {
-                var result = command.Replace("--set ", string.Empty);
-                var list = result.Split(':');
-                if (list.First().Equals("ClientNotActive"))
-                {
-                    Users.FirstOrDefault(x => x.Name.Equals(list.Last())).IsActive = false;
-                    return true;
-                }
-
-            }
-
-            return false;
         }
     }
 }

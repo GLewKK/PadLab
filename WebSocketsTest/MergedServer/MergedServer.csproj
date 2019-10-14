@@ -43,7 +43,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MessageProvider.cs" />
+    <Compile Include="Entities\LostMessage.cs" />
+    <Compile Include="Entities\MessageTarget.cs" />
+    <Compile Include="Entities\UserCommand.cs" />
+    <Compile Include="Extensions\ListMessageProvidersExtension.cs" />
+    <Compile Include="Extensions\MessageProviderNotificatorExtension.cs" />
+    <Compile Include="Entities\MessageProvider.cs" />
+    <Compile Include="Extensions\MessageProviderExtension.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Unit.cs" />
@@ -51,5 +57,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

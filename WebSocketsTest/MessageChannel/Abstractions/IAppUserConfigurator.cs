@@ -1,6 +1,4 @@
-﻿using System.Net;
-
-namespace MessageChannel.Abstractions
+﻿namespace MessageChannel.Abstractions
 {
     public interface IAppUserConfigurator
     {
