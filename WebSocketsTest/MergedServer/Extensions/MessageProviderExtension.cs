@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using MergedServer.Entities;
 using static MergedServer.Program;
 
@@ -10,14 +12,15 @@ namespace MergedServer.Extensions
     {
         public static List<MessageTarget> CreateChannel(this MessageProvider user, string channelName)
         {
-            user.Channel = channelName;
+            if(!string.IsNullOrEmpty(channelName))
+                user.Channel = channelName;
 
             return new List<MessageTarget>
             {
                 new MessageTarget
                 {
                     Targets = new List<MessageProvider> { user },
-                    Message = "Channel created"
+                    Message = string.IsNullOrEmpty(channelName) ? "Invalid channel name" : "Channel created"
                 }
             };
         }
@@ -68,6 +71,12 @@ namespace MergedServer.Extensions
                 };
             }
 
+            var filePath = @"C:\Users\glewk\source\repos\PadLab\WebSocketsTest\logs\";
+            StringBuilder sb = new StringBuilder();
+            sb.Append($"{user.Name} -> {user.Channel}: {message}" + Environment.NewLine);
+
+            File.AppendAllText(filePath + $"{DateTime.Now:dd_MM_yyyy}.txt", sb.ToString());
+            sb.Clear();
             return new List<MessageTarget>
             {
                 new MessageTarget
